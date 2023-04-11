@@ -5,7 +5,6 @@
 
 from transformers import WhisperForConditionalGeneration, WhisperProcessor, Seq2SeqTrainingArguments,Seq2SeqTrainer
 from datasets import Audio, DatasetDict, concatenate_datasets, load_dataset
-from transformers.models.whisper.english_normalizer import BasicTextNormalizer
 from dataclasses import dataclass
 from typing import Any, Dict, List, Union
 import torch
@@ -23,10 +22,7 @@ metric = evaluate.load("wer")
 model = WhisperForConditionalGeneration.from_pretrained(MODEL_ID)
 processor = WhisperProcessor.from_pretrained(MODEL_ID, language=MODEL_LANGUAGE, task="transcribe")
 tokenizer = processor.tokenizer
-normalizer = BasicTextNormalizer()
 
-do_normalize_text = True
-do_normalize_eval = True
 preprocessing_num_workers = 8
 max_input_length = 30
 min_input_length = 0
@@ -49,7 +45,6 @@ def normalize_dataset(ds, audio_column_name=None, text_column_name=None):
     # normalise columns to ["audio", "sentence"]
     ds = ds.remove_columns(set(ds.features.keys()) - set([AUDIO_COLUMN_NAME, TEXT_COLUMN_NAME]))
     return ds
-
 
 google_fleurs_train_ds = load_dataset("google/fleurs", "km_kh", split="train+validation", use_auth_token=True)
 google_fleurs_test_ds = load_dataset("google/fleurs", "km_kh", split="test", use_auth_token=True)
@@ -76,7 +71,7 @@ def prepare_dataset(batch):
     batch["input_length"] = len(audio["array"]) / audio["sampling_rate"]
 
     # process targets
-    input_str = normalizer(batch[TEXT_COLUMN_NAME]).strip() if do_normalize_text else batch[TEXT_COLUMN_NAME]
+    input_str = batch[TEXT_COLUMN_NAME]
     # encode target text to label ids
     batch["labels"] = processor.tokenizer(input_str).input_ids
 
@@ -131,7 +126,6 @@ class DataCollatorSpeechSeq2SeqWithPadding:
 
         return batch
 
-
 data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
 
 def compute_metrics(pred):
@@ -144,20 +138,9 @@ def compute_metrics(pred):
     # we do not want to group tokens when computing the metrics
     pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
     label_str = tokenizer.batch_decode(label_ids, skip_special_tokens=True)
-
-    if do_normalize_eval:
-        pred_str = [normalizer(pred) for pred in pred_str]
-        # perhaps already normalised
-        label_str = [normalizer(label) for label in label_str]
-        # filtering step to only evaluate the samples that correspond to non-zero references
-        pred_str = [pred_str[i] for i in range(len(pred_str)) if len(label_str[i]) > 0]
-        label_str = [label_str[i] for i in range(len(label_str)) if len(label_str[i]) > 0]
-
     wer = metric.compute(predictions=pred_str, references=label_str)
 
     return {"wer": wer}
-
-
 
 training_args = Seq2SeqTrainingArguments(
     output_dir=OUTPUT_DIR,
