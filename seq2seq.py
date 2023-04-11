@@ -2,7 +2,7 @@
 # https://medium.com/@bofenghuang7/what-i-learned-from-whisper-fine-tuning-event-2a68dab1862
 # https://github.com/huggingface/community-events
 # https://huggingface.co/blog/fine-tune-whisper
-
+from khmernltk import word_tokenize
 from transformers import WhisperForConditionalGeneration, WhisperProcessor, Seq2SeqTrainingArguments,Seq2SeqTrainer
 from datasets import Audio, DatasetDict, concatenate_datasets, load_dataset
 from dataclasses import dataclass
@@ -31,9 +31,9 @@ model.config.forced_decoder_ids = None
 model.config.suppress_tokens = []
 model.config.use_cache = False
 
-def transform_slr_sentence(ds):
-    sentence = ds['sentence'].replace(" ", "")
-    return {"sentence": sentence }
+def transform_khmer_sentence(ds):
+    transcription = word_tokenize(ds['transcription'], return_tokens=False, separator=" ")
+    return {"transcription": transcription }
 
 def normalize_dataset(ds, audio_column_name=None, text_column_name=None):
     if audio_column_name is not None and audio_column_name != AUDIO_COLUMN_NAME:
@@ -47,14 +47,17 @@ def normalize_dataset(ds, audio_column_name=None, text_column_name=None):
     return ds
 
 google_fleurs_train_ds = load_dataset("google/fleurs", "km_kh", split="train+validation", use_auth_token=True)
+google_fleurs_train_ds = google_fleurs_train_ds.map(transform_khmer_sentence)
+
 google_fleurs_test_ds = load_dataset("google/fleurs", "km_kh", split="test", use_auth_token=True)
+google_fleurs_test_ds = google_fleurs_test_ds.map(transform_khmer_sentence)
+
 openslr_train_ds = load_dataset("openslr", "SLR42", split="train", use_auth_token=True)
-openslr_clean_ds = openslr_train_ds.map(transform_slr_sentence)
 
 raw_datasets = DatasetDict()
 raw_datasets['train'] = concatenate_datasets([
   normalize_dataset(google_fleurs_train_ds, audio_column_name="audio", text_column_name="transcription"),
-  normalize_dataset(openslr_clean_ds, audio_column_name="audio", text_column_name="sentence"),
+  normalize_dataset(openslr_train_ds, audio_column_name="audio", text_column_name="sentence"),
 ])
 
 raw_datasets['train'] = raw_datasets['train'].shuffle(seed=10)
