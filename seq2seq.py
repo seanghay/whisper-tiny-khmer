@@ -1,3 +1,8 @@
+# References:
+# https://medium.com/@bofenghuang7/what-i-learned-from-whisper-fine-tuning-event-2a68dab1862
+# https://github.com/huggingface/community-events
+# https://huggingface.co/blog/fine-tune-whisper
+
 from transformers import WhisperForConditionalGeneration, WhisperProcessor, Seq2SeqTrainingArguments,Seq2SeqTrainer
 from datasets import Audio, DatasetDict, concatenate_datasets, load_dataset
 from transformers.models.whisper.english_normalizer import BasicTextNormalizer
