@@ -184,16 +184,4 @@ trainer.train()
 
 model.save_pretrained(training_args.output_dir)
 processor.save_pretrained(training_args.output_dir)
-
-kwargs = {
-    "dataset_tags": ["openslr", "google/fleurs"],
-    "dataset": "Google FLEURS & OpenSLR",
-    "dataset_args": "config: km, split: all",
-    "language": "km",
-    "model_name": MODEL_NAME,
-    "finetuned_from": MODEL_ID,
-    "tasks": "automatic-speech-recognition",
-    "tags": "hf-asr-leaderboard",
-}
-
-trainer.push_to_hub(**kwargs)
+trainer.push_to_hub()
