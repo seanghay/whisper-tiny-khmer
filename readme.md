@@ -1,3 +1,4 @@
+https://huggingface.co/seanghay/whisper-small-khmer
 
 ## Install deps
 
