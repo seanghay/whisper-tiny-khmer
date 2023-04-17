@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Union
 import torch
 import evaluate
 
-OUTPUT_DIR = "./outputs/whisper_tiny_km"
+OUTPUT_DIR = "./outputs/whisper-tiny-khmer"
 MODEL_NAME = "Whisper Tiny Khmer - Seanghay Yath"
 MODEL_ID = "openai/whisper-tiny"
 MODEL_LANGUAGE = "khmer"
@@ -23,7 +23,8 @@ model = WhisperForConditionalGeneration.from_pretrained(MODEL_ID)
 processor = WhisperProcessor.from_pretrained(MODEL_ID, language=MODEL_LANGUAGE, task="transcribe")
 tokenizer = processor.tokenizer
 
-preprocessing_num_workers = 8
+preprocessing_num_workers = 30
+
 max_input_length = 30
 min_input_length = 0
 
@@ -54,10 +55,18 @@ google_fleurs_test_ds = google_fleurs_test_ds.map(transform_khmer_sentence)
 
 openslr_train_ds = load_dataset("openslr", "SLR42", split="train", use_auth_token=True)
 
+kmcs_train_ds = load_dataset("seanghay/kmcs", split="train", use_auth_token=True)
+kmcs_train_ds = kmcs_train_ds.map(transform_khmer_sentence)
+
+aug_train_ds = load_dataset("seanghay/km-augmented-16-combined", split="train", use_auth_token=True)
+
 raw_datasets = DatasetDict()
 raw_datasets['train'] = concatenate_datasets([
   normalize_dataset(google_fleurs_train_ds, audio_column_name="audio", text_column_name="transcription"),
   normalize_dataset(openslr_train_ds, audio_column_name="audio", text_column_name="sentence"),
+  normalize_dataset(kmcs_train_ds, audio_column_name="audio", text_column_name="transcription"),
+  
+  aug_train_ds # augmented dataset
 ])
 
 raw_datasets['train'] = raw_datasets['train'].shuffle(seed=10)
